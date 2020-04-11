@@ -1,0 +1,44 @@
+body {
+    padding:0;
+    margin:0;
+    overflow: hidden;
+}
+
+canvas {
+    cursor: none;
+}
+
+.container {
+    width: 100vw;
+    height: 100vh;
+}
+
+.login {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    background-color: rgba(255, 255, 255, 1)
+}
+
+.hidden {
+    display: none;
+}
+
+#playerListContainer {
+    position: absolute;
+    top: 50px;
+    right: 50px;
+}
+
+#colorPicker {
+    position: absolute;
+    top: 50px;
+    left: 50px;
+    background-color: rgba(255, 255, 255, 0.85);
+    border-radius: 29px;
+    transition: 0.2s;
+}
+
+#colorPicker:hover, #colorPicker:active {
+    background-color: #DEDEDE;
+}
