@@ -22,7 +22,8 @@ let color = '#1976d2';
 const debug = true;
 
 // Websocket setup
-const socket = io('http://localhost:3000');
+// const socket = io('http://localhost:3000');
+const socket = io(window.location.hostname);
 socket.on('connect', onConnect);
 
 // Log new socket connection
