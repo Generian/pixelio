@@ -1,11 +1,12 @@
 body {
+    font-family: Roboto, sans-serif;
     padding:0;
     margin:0;
     overflow: hidden;
 }
 
 canvas {
-    cursor: none;
+    /* cursor: none; */
 }
 
 .container {
@@ -14,10 +15,28 @@ canvas {
 }
 
 .login {
+    display: flex;
     position: absolute;
     top: 0px;
     left: 0px;
-    background-color: rgba(255, 255, 255, 1)
+    background-color: rgba(255, 255, 255, 0.8)
+}
+
+#nameContainer {
+    display: inline-flex;
+    align-items: center;
+    margin: auto;
+    background-color: white;
+    padding: 15px;
+    border-radius: 15px;
+}
+
+#nameContainer button {
+    height: 56px;
+}
+
+#nameContainer > div {
+    padding-left: 15px;
 }
 
 .hidden {
@@ -28,6 +47,27 @@ canvas {
     position: absolute;
     top: 50px;
     right: 50px;
+    background-color: rgba(255, 255, 255, 0.85);
+    padding: 15px;
+    border-radius: 15px;
+    transition: 0.2s;
+}
+
+.playersTitle {
+    display: block;
+    padding-left: 8px;
+    padding-right: 8px;
+    padding-bottom: 8px;
+    color: gray;
+    font-weight: 500;
+}
+
+#playerList {
+    display: flex;
+    flex-direction: column;
+    align-items: baseline;
+    max-height: 360px;
+    overflow-y: auto;
 }
 
 #colorPicker {
@@ -41,4 +81,16 @@ canvas {
 
 #colorPicker:hover, #colorPicker:active {
     background-color: #DEDEDE;
+}
+
+#playerListContainer:hover {
+    background-color: rgba(255, 255, 255, 1);
+}
+
+.mdc-button {
+    min-height: 36px;
+}
+
+.mdc-button .mdc-button__ripple::before, .mdc-button .mdc-button__ripple::after {
+    background-color: gray;
 }

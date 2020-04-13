@@ -2,6 +2,9 @@ import p5 from "p5/lib/p5.min";
 import io from "socket.io-client";
 
 import '@polymer/paper-swatch-picker/paper-swatch-picker.js';
+import {MDCTextField} from '@material/textfield';
+
+const textField = new MDCTextField(document.querySelector('.mdc-text-field'));
  
 
 // Game initialization
@@ -19,11 +22,13 @@ let brushEnabled = false;
 let isPainting = false;
 let color = '#1976d2';
 
+let follow = false;
+let playerToFollow = '';
+
 const debug = true;
 
 // Websocket setup
-// const socket = io('http://localhost:3000');
-const socket = io(window.location.hostname);
+const socket = io(window.location.hostname == "localhost" ? "localhost:3000" : window.location.hostname);
 socket.on('connect', onConnect);
 
 // Log new socket connection
@@ -39,11 +44,9 @@ function updateArt(a) {
 } 
 
 // Receive user data and update local version
-socket.on('userData', handleUserdata);
-
-function handleUserdata(u) {
+socket.on('userData', (u) => {
     users = u;
-}
+});
 
 // Update usernamelist
 socket.on('updateUsernameList', updateUsernameList);
@@ -53,7 +56,18 @@ function updateUsernameList() {
     playersList.empty();
 
     for (let player in users) {
-        playersList.append(`<div><p>${users[player]["name"]}</p></div>`)
+        if (typeof users[player]["name"] != 'undefined' && typeof users[player]["loc"] != 'undefined') {
+            playersList.append(`<button class="mdc-button" id="${player}" style="${player == socket.id ? "" : "color: " + users[player]["color"]}" ${player == socket.id ? "disabled" : ""}>
+            <div class="mdc-button__ripple"></div>
+            <span class="mdc-button__label">${player == socket.id ? "You (" + users[player]["name"] + ")": users[player]["name"]}</span>
+            </button>`)
+
+            // Attach click handler
+            $(`#${player}`).click(() => {
+                follow = follow ? false : true;
+                playerToFollow = follow ? player : "";
+            });
+        }
     }
 }
 
@@ -65,10 +79,8 @@ document.getElementById("name-submission-field").addEventListener("keypress", fu
     }
 });
 
-document.getElementById("name-submission-button").addEventListener("keypress", function(e){
-    if (e.key === 'Enter') {
+$("#name-submission-button").click(function(e){
         captureName();
-    }
 });
 
 function captureName() {
@@ -93,6 +105,14 @@ $("#colorPicker").mouseout(function(){
     brushEnabled = true;
 });
 
+$("#playerListContainer").mouseover(function(){
+    brushEnabled = false;
+});
+
+$("#playerListContainer").mouseout(function(){
+    brushEnabled = true;
+});
+
 document.getElementById("name-submission-button").addEventListener("keypress", function(e){
     if (e.key === 'Enter') {
         captureName();
@@ -101,8 +121,8 @@ document.getElementById("name-submission-button").addEventListener("keypress", f
 
 $("paper-swatch-picker").on("color-changed", function(data){
     color = data.originalEvent.detail.value;
+    socket.emit("colorChange", color);
 });
-
 
 
 ///////////////
@@ -116,26 +136,31 @@ const sketch = (p) => {
     p.draw = function() {
         myP5.clear();
         myP5.translate(translate.x + pan.x, translate.y + pan.y);
-        drawBackground();
+        // drawBackground();
 
         checkUpdates();
 
         drawPainting();
         drawUsers();
         drawBrush();
+        followPlayer();
     };
 
     p.mousePressed = function() {
-        if (myP5.mouseButton === myP5.LEFT) {
-            if (brushEnabled) {
-                isPainting = true;
-                paint();
+        if (follow) {
+            follow = false;
+        } else {
+            if (myP5.mouseButton === myP5.LEFT) {
+                if (brushEnabled) {
+                    isPainting = true;
+                    paint();
+                }
             }
-        }
-        if (myP5.mouseButton === myP5.RIGHT) {
-            lastRightClick = {x: myP5.mouseX, y: myP5.mouseY};
-        }
-        if (myP5.mouseButton === myP5.CENTER) {
+            if (myP5.mouseButton === myP5.RIGHT) {
+                lastRightClick = {x: myP5.mouseX, y: myP5.mouseY};
+            }
+            if (myP5.mouseButton === myP5.CENTER) {
+            }
         }
     };
 
@@ -151,11 +176,15 @@ const sketch = (p) => {
     };
 
     p.mouseWheel = function(event) {
+        if (brushEnabled) {
         const m = mouseLoc()
         scale = scale + event.deltaY/100;
         scale = scale < 1 ? 1 : scale;
-        translate.x += -event.deltaY/100 * m.x;
-        translate.y += -event.deltaY/100 * m.y;
+        if (scale != 1) {
+            translate.x += -event.deltaY/100 * m.x;
+            translate.y += -event.deltaY/100 * m.y;
+        }
+        }
     }
 
     p.mouseDragged = function() {
@@ -181,9 +210,13 @@ const sketch = (p) => {
 export const myP5 = new p5(sketch)
 
 function mouseLoc() {
-    let x = Math.round((-(translate.x + pan.x) + myP5.mouseX-scale/2)/scale)
-    let y = Math.round((-(translate.y + pan.y) + myP5.mouseY-scale/2)/scale)
-    return {x: x, y: y}
+    if (follow && typeof users[playerToFollow]["loc"] != 'undefined') {
+        return users[playerToFollow]["loc"];
+    } else {
+        let x = Math.round((-(translate.x + pan.x) + myP5.mouseX-scale/2)/scale)
+        let y = Math.round((-(translate.y + pan.y) + myP5.mouseY-scale/2)/scale)
+        return {x: x, y: y}
+    }
 }
 
 let mouseLocation = mouseLoc();
@@ -218,14 +251,15 @@ function drawBackground() {
     }
 }
 
-function drawBrush() {
+function drawBrush(loc = mouseLoc(), c = color) {
     if (!isPanning && brushEnabled) {
-        const loc = mouseLoc();
-        myP5.fill(color);
+        myP5.fill(c);
+        myP5.stroke(50, 50, 50);
+        myP5.strokeWeight(scale/10 > 3 ? 3 : scale/10);
         myP5.rect(loc.x * scale, loc.y * scale, scale, scale);
         if (scale < 7) {
             myP5.noFill();
-            myP5.stroke(color);
+            myP5.stroke(c);
             myP5.strokeWeight(2/scale);
             myP5.circle(loc.x * scale + scale/2, loc.y * scale + scale/2, 10)
         }
@@ -234,15 +268,26 @@ function drawBrush() {
 
 function drawUsers() {
     for (let user in users) {
-        if (typeof users[user]["loc"] != 'undefined') {
+        if (typeof users[user]["loc"] != 'undefined' && typeof users[user]["name"] != 'undefined') {
             if (user != socket.id) {
                 const loc = users[user]["loc"];
-                myP5.fill('purple');
+                myP5.fill(users[user]["color"]);
+                myP5.stroke(50, 50, 50);
+                myP5.strokeWeight(scale/10 > 3 ? 3 : scale/10);
                 myP5.rect(loc.x * scale, loc.y * scale, scale, scale);
+                if (scale < 7) {
+                    myP5.noFill();
+                    myP5.stroke(users[user]["color"]);
+                    myP5.strokeWeight(2/scale);
+                    myP5.circle(loc.x * scale + scale/2, loc.y * scale + scale/2, 10)
+                }
+
+                // Username
                 myP5.textSize(15);
                 myP5.fill(100, 100, 100);
+                myP5.noStroke();
                 myP5.textAlign(myP5.LEFT, myP5.BOTTOM);
-                myP5.text(user, loc.x * scale + scale + 5, loc.y * scale - 5);
+                myP5.text(users[user]["name"].toUpperCase(), loc.x * scale + scale + 5, loc.y * scale - 5);
             }
         }
     }
@@ -256,6 +301,14 @@ function paint() {
     // } else if (typeof art[loc.x][loc.y] === 'undefined') {
     //     art[loc.x][loc.y] = true;
     // }
+}
+
+function followPlayer() {
+    if (follow) {
+        const loc = users[playerToFollow]["loc"];
+        translate.x = -loc.x * scale + (myP5.windowWidth - scale)/2
+        translate.y = -loc.y * scale + (myP5.windowHeight - scale)/2
+    }
 }
 
 function sendClientData() {

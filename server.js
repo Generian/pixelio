@@ -42,13 +42,26 @@ function newConnection(socket) {
         io.sockets.emit('updateUsernameList', {});
     });
 
+    // User changed color. Tell clients to update
+    socket.on('colorChange', (color) => {
+        users[socket.id]["color"] = color;
+
+        // Send user data
+        io.sockets.emit('userData', users);
+        io.sockets.emit('updateUsernameList', {});
+    });
+
     // Handle client data
     socket.on('clientData', handleClientData);
 
     function handleClientData(data) {
         // Update user position
         if (data.loc) {
+            if (typeof users[data.id] === 'undefined') {
+                users[data.id] = {};
+            }
             users[data.id]["loc"] = data.loc;
+                users[data.id]["color"] = data.color;
         }
 
         // Send user data
